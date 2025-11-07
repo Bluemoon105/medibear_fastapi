@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from services.sleep_services.llm_service import generate_general_chat, generate_daily_report, generate_weekly_report
-from services.sleep_services.mongo_service import save_chat, get_user_chats
-from models.sleep_models.sleepSchema import ChatRequest, SleepChatRequest
+from services.sleep_services.mongo_service import get_user_chats
+from models.sleep_models.sleepSchema import ChatRequest
 
 router = APIRouter(prefix="/sleepchat", tags=["Chat"])
 

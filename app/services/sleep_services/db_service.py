@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from config import settings
+from config.sleep_config import settings
 
 engine = create_engine(
     settings.POSTGRES_URL,

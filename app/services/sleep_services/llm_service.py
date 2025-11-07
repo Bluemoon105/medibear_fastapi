@@ -1,9 +1,8 @@
 # from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from config import settings
+from config.sleep_config import settings
 from services.sleep_services.user_service import get_user_info, get_daily_activity, get_weekly_activity
 from services.sleep_services.mongo_service import save_chat, get_user_chats
 import google.generativeai as genai
-import os
 from dotenv import load_dotenv
 
 load_dotenv()

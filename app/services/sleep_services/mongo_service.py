@@ -1,6 +1,6 @@
 from pymongo import MongoClient, DESCENDING, ASCENDING
 from datetime import datetime
-from config import settings
+from config.sleep_config import settings
 import certifi
 
 client = MongoClient(
