@@ -1,8 +1,8 @@
 import pandas as pd
 from fastapi import APIRouter
-from models.sleep_models.sleepSchema import UserInput
-from services.sleep_services.sleep_service import predict_fatigue, rule_based_sleep_recommendation
-from services.sleep_services.sleep_service import model, scaler, columns
+from app.models.sleep_models.sleepSchema import UserInput
+from app.services.sleep_services.sleep_service import predict_fatigue, rule_based_sleep_recommendation
+from app.services.sleep_services.sleep_service import model, scaler, columns
 
 
 router = APIRouter(prefix="/sleep", tags=["sleep"])
