@@ -5,14 +5,8 @@ from services.sleep_services.mongo_service import save_chat, get_user_chats
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-# from langsmith import traceable
 
 load_dotenv()
-
-# os.environ["LANGSMITH_TRACING_V2"] = "true"
-# os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
-# os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")
-# os.environ["LANGSMITH_PROJECT"] = os.getenv("LANGSMITH_PROJECT")
 
 genai.configure(api_key=settings.GOOGLE_API_KEY)
 model = genai.GenerativeModel("gemini-2.5-flash")
@@ -31,7 +25,6 @@ def _fmt(label: str, value, unit: str = ""):
     return f"- {label}: {value}{unit}"
 
 #일반 수면 대화용
-# @traceable
 def generate_general_chat(req):
     """일상 수면 관련 대화 (피로도 데이터 없이 일반 질문 대응)"""
     prompt = f"""
@@ -52,7 +45,6 @@ def generate_general_chat(req):
     return response
 
 # 일간 리포트 (하루 데이터 기반)
-# @traceable
 def generate_daily_report(user_id:int):
     user = get_user_info(user_id) or {}
     activity = get_daily_activity(user_id) or {}
@@ -94,7 +86,6 @@ def generate_daily_report(user_id:int):
     return response
 
 #주간 리포트
-# @traceable
 def generate_weekly_report(user_id:int):
     user = get_user_info(user_id) or {}
     week_data = get_weekly_activity(user_id) or {}
