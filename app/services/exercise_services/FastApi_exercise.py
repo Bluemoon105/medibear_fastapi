@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
+import chardet
 
 import os, io, math, base64
 import numpy as np
@@ -25,9 +26,9 @@ from tensorflow.keras import layers
 # --------------------------
 app = FastAPI(title="AI Coach Core (FastAPI + MediaPipe + CNN-LSTM)")
 
-# 모델/라벨
-cnn_lstm_model = None
-LABELS_PATH = "model/labels.txt"
+# # 모델/라벨
+# cnn_lstm_model = None
+LABELS_PATH = "../../models/exercise_models/cnn_lstm_exercise_model.keras"
 CLASSES: List[str] = []
 
 # 학습 시 사용한 설정과 동일하게 맞추세요
@@ -332,23 +333,32 @@ def analyze_video(video_bytes: bytes) -> Dict[str, Any]:
 def on_startup():
     global cnn_lstm_model, CLASSES, pose_detector
 
-    # 클래스 라벨 로드
+    # --- 클래스 라벨 로드 ---
     try:
-        with open(LABELS_PATH, "r", encoding="utf-8") as f:
+        # 1️⃣ 인코딩 자동 감지
+        with open(LABELS_PATH, "rb") as f:
+            raw_data = f.read()
+            detected = chardet.detect(raw_data)
+            encoding = detected["encoding"] or "utf-8"
+
+        # 2️⃣ 감지된 인코딩으로 읽기
+        with open(LABELS_PATH, "r", encoding=encoding, errors="ignore") as f:
             CLASSES = [line.strip() for line in f if line.strip()]
+
     except FileNotFoundError:
-        # fallback (학습 순서와 다르면 예측 라벨이 달라질 수 있음)
+        print(f"⚠️ {LABELS_PATH} not found. Using default class list.")
         CLASSES = ["benchpress", "deadlift", "plank", "pushup", "squat"]
 
-    # 모델 로드 (커스텀 레이어 등록)
+    # --- 모델 로드 ---
     cnn_lstm_model = load_model(
-        "model/cnn_lstm_exercise_model.keras",
+        os.path.join(os.path.dirname(__file__), "../../models/exercise_models/cnn_lstm_exercise_model.keras"),
         custom_objects={"TemporalAttention": TemporalAttention}
     )
-    # MediaPipe Pose 전역 생성 (재사용)
+
+    # --- MediaPipe Pose 생성 ---
     pose_detector = mp_pose.Pose(static_image_mode=True)
 
-    print("✅ CNN-LSTM 모델 & Pose 로드 완료. classes =", CLASSES)
+    print(f"✅ CNN-LSTM 모델 & Pose 로드 완료. classes = {CLASSES}")
 
 @app.on_event("shutdown")
 def on_shutdown():
