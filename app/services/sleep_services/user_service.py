@@ -4,6 +4,7 @@ from app.services.sleep_services.db_service import get_engine
 
 engine = get_engine()
 
+#사용자 정보 조회
 def get_user_info(user_id: int):
     """PostgreSQL에서 사용자 기본정보 조회"""
     with engine.connect() as conn:
@@ -30,6 +31,7 @@ def get_user_info(user_id: int):
         "age": age
     }
     
+#하루 활동 정보 조회    
 def get_daily_activity(user_id: int):
     """PostgreSQL에서 하루 활동 데이터 조회"""
     with engine.connect() as conn:
@@ -61,6 +63,7 @@ def get_daily_activity(user_id: int):
         "physical_activity_hours": "N/A",
     }
     
+#주간 활동 정보 조회    
 def get_weekly_activity(user_id: int):
     with engine.connect() as conn:
         result = conn.execute(

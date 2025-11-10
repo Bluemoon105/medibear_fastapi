@@ -7,10 +7,12 @@ from app.services.sleep_services.sleep_service import model, scaler, columns
 
 router = APIRouter(prefix="/sleep", tags=["sleep"])
 
+#피로도 점수 예측
 @router.post("/predict-fatigue")
 async def predict_fatigue_endpoint(data: UserInput):
     return predict_fatigue(data)
 
+#수면 시간 추천
 @router.post("/recommend")
 def recommend_rule_based(data: UserInput):
     df = pd.DataFrame([data.model_dump()])[columns]

@@ -12,6 +12,7 @@ model = bundle["model"]
 scaler = bundle["scaler"]
 columns = bundle["columns"]
 
+#수면 시간 추천
 def rule_based_sleep_recommendation(
     sleep_hours: float,
     physical_activity_hours: float,
@@ -48,7 +49,7 @@ def rule_based_sleep_recommendation(
 
     return round(min_optimal, 1), round(max_optimal, 1)
 
-
+#피로토 예측
 def predict_fatigue(data: UserInput):
     df = pd.DataFrame([data.model_dump()])[columns]
     X_scaled = scaler.transform(df)
