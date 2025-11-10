@@ -52,7 +52,6 @@ def general_chat_node(state: SleepState):
 
     return {"response": response, "messages": [AIMessage(content=response)]}
 
-
 #일간 리포트
 def daily_report_node(state: SleepState):
     user_id = state.user_id
@@ -109,7 +108,6 @@ def weekly_report_node(state: SleepState):
     save_chat(user_id, "주간 리포트 요청", response, chat_type="report")
 
     return {"response": response, "messages": [AIMessage(content=response)]}
-
 
 #각 그래프 별도 컴파일
 def build_graph(start_node_name, func):
