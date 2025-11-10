@@ -5,8 +5,6 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
-import chardet
-
 import os, io, math, base64
 import numpy as np
 import cv2
@@ -26,9 +24,10 @@ from tensorflow.keras import layers
 # --------------------------
 app = FastAPI(title="AI Coach Core (FastAPI + MediaPipe + CNN-LSTM)")
 
-# # 모델/라벨
-# cnn_lstm_model = None
-LABELS_PATH = "../../models/exercise_models/cnn_lstm_exercise_model.keras"
+
+# 모델/라벨
+cnn_lstm_model = None
+LABELS_PATH = "../../models/exercise_models/labels.txt"
 CLASSES: List[str] = []
 
 # 학습 시 사용한 설정과 동일하게 맞추세요
@@ -333,32 +332,23 @@ def analyze_video(video_bytes: bytes) -> Dict[str, Any]:
 def on_startup():
     global cnn_lstm_model, CLASSES, pose_detector
 
-    # --- 클래스 라벨 로드 ---
+    # 클래스 라벨 로드
     try:
-        # 1️⃣ 인코딩 자동 감지
-        with open(LABELS_PATH, "rb") as f:
-            raw_data = f.read()
-            detected = chardet.detect(raw_data)
-            encoding = detected["encoding"] or "utf-8"
-
-        # 2️⃣ 감지된 인코딩으로 읽기
-        with open(LABELS_PATH, "r", encoding=encoding, errors="ignore") as f:
+        with open(LABELS_PATH, "r", encoding="utf-8") as f:
             CLASSES = [line.strip() for line in f if line.strip()]
-
     except FileNotFoundError:
-        print(f"⚠️ {LABELS_PATH} not found. Using default class list.")
+        # fallback (학습 순서와 다르면 예측 라벨이 달라질 수 있음)
         CLASSES = ["benchpress", "deadlift", "plank", "pushup", "squat"]
 
-    # --- 모델 로드 ---
+    # 모델 로드 (커스텀 레이어 등록)
     cnn_lstm_model = load_model(
-        os.path.join(os.path.dirname(__file__), "../../models/exercise_models/cnn_lstm_exercise_model.keras"),
+        "../../models/exercise_models/cnn_lstm_exercise_model.keras",
         custom_objects={"TemporalAttention": TemporalAttention}
     )
-
-    # --- MediaPipe Pose 생성 ---
+    # MediaPipe Pose 전역 생성 (재사용)
     pose_detector = mp_pose.Pose(static_image_mode=True)
 
-    print(f"✅ CNN-LSTM 모델 & Pose 로드 완료. classes = {CLASSES}")
+    print("✅ CNN-LSTM 모델 & Pose 로드 완료. classes =", CLASSES)
 
 @app.on_event("shutdown")
 def on_shutdown():
@@ -392,7 +382,7 @@ def analyze_json(payload: AnalyzeRequest):
             result = analyze_frame(image_bytes)
             if msg:
                 result["message"] = msg
-            # print(result)
+            print(result)
             return AnalyzeResponse(**result)
 
         # 2) 동영상(base64)
@@ -401,7 +391,7 @@ def analyze_json(payload: AnalyzeRequest):
             result = analyze_video(video_bytes)  # 프레임별 pose/단계/프레임별 예측 포함
             if msg:
                 result["message"] = msg
-            # print(result)
+            print(result)
             return AnalyzeResponse(**result)
 
         # 3) 텍스트만
