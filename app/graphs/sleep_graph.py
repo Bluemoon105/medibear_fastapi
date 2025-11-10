@@ -15,7 +15,7 @@ genai.configure(api_key=settings.GOOGLE_API_KEY)
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 
-# -------- 상태 정의 --------
+# 상태 정의
 class SleepState(BaseModel):
     req: Annotated[Dict[str, Any], LastValue(Dict[str, Any])]
     user_id: Annotated[int, LastValue(int)]
@@ -23,7 +23,7 @@ class SleepState(BaseModel):
     response: Annotated[str, LastValue(str)]
 
 
-# -------- 유틸 --------
+# 유틸
 def _safe_avg(items, key, ndigits=None):
     vals = [x.get(key) for x in items if x.get(key) is not None]
     if not vals:
@@ -32,7 +32,7 @@ def _safe_avg(items, key, ndigits=None):
     return round(avg, ndigits) if ndigits else avg
 
 
-# --------일반 대화 --------
+# 일반 대화
 def general_chat_node(state: SleepState):
     req = state.req
     message = req.get("message")
@@ -53,7 +53,7 @@ def general_chat_node(state: SleepState):
     return {"response": response, "messages": [AIMessage(content=response)]}
 
 
-# --------일간 리포트 --------
+#일간 리포트
 def daily_report_node(state: SleepState):
     user_id = state.user_id
     user = get_user_info(user_id) or {}
@@ -82,7 +82,7 @@ def daily_report_node(state: SleepState):
     return {"response": response, "messages": [AIMessage(content=response)]}
 
 
-# -------- 주간 리포트 --------
+#주간 리포트
 def weekly_report_node(state: SleepState):
     user_id = state.user_id
     user = get_user_info(user_id) or {}
@@ -111,7 +111,7 @@ def weekly_report_node(state: SleepState):
     return {"response": response, "messages": [AIMessage(content=response)]}
 
 
-# -------- 각 그래프 별도 컴파일 --------
+#각 그래프 별도 컴파일
 def build_graph(start_node_name, func):
     graph = StateGraph(SleepState)
     graph.add_node(start_node_name, func)
