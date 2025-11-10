@@ -32,7 +32,7 @@ def _safe_avg(items, key, ndigits=None):
     return round(avg, ndigits) if ndigits else avg
 
 
-# -------- 1️⃣ 일반 대화 --------
+# --------일반 대화 --------
 def general_chat_node(state: SleepState):
     req = state.req
     message = req.get("message")
@@ -53,7 +53,7 @@ def general_chat_node(state: SleepState):
     return {"response": response, "messages": [AIMessage(content=response)]}
 
 
-# -------- 2️⃣ 일간 리포트 --------
+# --------일간 리포트 --------
 def daily_report_node(state: SleepState):
     user_id = state.user_id
     user = get_user_info(user_id) or {}
@@ -82,7 +82,7 @@ def daily_report_node(state: SleepState):
     return {"response": response, "messages": [AIMessage(content=response)]}
 
 
-# -------- 3️⃣ 주간 리포트 --------
+# -------- 주간 리포트 --------
 def weekly_report_node(state: SleepState):
     user_id = state.user_id
     user = get_user_info(user_id) or {}
