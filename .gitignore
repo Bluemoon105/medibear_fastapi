@@ -6,7 +6,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+app/models/exercise_models/*.gguf
 # C extensions
 *.so
 
@@ -131,6 +131,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+qwen2.5-1.5b-instruct-q4_k_m.gguf
 
 # Spyder project settings
 .spyderproject
