@@ -18,7 +18,7 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 # 상태 정의
 class SleepState(BaseModel):
     req: Annotated[Dict[str, Any], LastValue(Dict[str, Any])]
-    user_id: Annotated[int, LastValue(int)]
+    user_id: Annotated[str, LastValue(str)]
     messages: Annotated[List[Any], add_messages]
     response: Annotated[str, LastValue(str)]
 

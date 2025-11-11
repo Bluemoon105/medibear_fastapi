@@ -9,7 +9,7 @@ def get_user_info(user_id: int):
     """PostgreSQL에서 사용자 기본정보 조회"""
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT name, gender, birth_date FROM users WHERE id = :user_id"),
+            text("SELECT name, gender, birth_date FROM users WHERE user_id = :user_id"),
             {"user_id": user_id}
         ).mappings().first()
 
@@ -64,7 +64,7 @@ def get_daily_activity(user_id: int):
     }
     
 #주간 활동 정보 조회    
-def get_weekly_activity(user_id: int):
+def get_weekly_activity(user_id: str):
     with engine.connect() as conn:
         result = conn.execute(
             text("""
