@@ -7,7 +7,7 @@ class DailyActivity(Base):
     __tablename__ = "daily_activities"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(String, ForeignKey("users.id"))
     date = Column(Date)
     sleep_hours = Column(Float)
     caffeine_mg = Column(Float)

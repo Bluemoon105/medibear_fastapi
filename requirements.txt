@@ -1,14 +1,55 @@
+# --- FastAPI / Web ---
 fastapi==0.120.4
 uvicorn==0.38.0
-pydantic
-python-dotenv
-requests
-pandas
-numpy
-scikit-learn
-joblib
-torch
-transformers
-google-generativeai
-matplotlib
-chardet
+python-dotenv==1.2.1
+requests==2.32.3
+orjson==3.11.4
+pydantic==2.12.4
+pydantic-core==2.41.5
+
+# --- MongoDB (via PyMongo) ---
+pymongo==4.15.3
+
+# --- LangGraph / LLM Framework ---
+langchain-core==1.0.3
+langgraph==1.0.2
+langgraph-checkpoint==3.0.1
+langgraph-prebuilt==1.0.2
+langgraph-sdk==0.2.9
+langsmith==0.4.41
+
+# --- Google Generative AI SDK ---
+google-generativeai==0.8.5
+google-ai-generativelanguage==0.6.15
+google-api-core==2.28.1
+google-auth==2.43.0
+google-auth-httplib2==0.2.1
+google-api-python-client==2.187.0
+googleapis-common-protos==1.72.0
+protobuf>=5.26.1,<6.0.0
+grpcio==1.76.0
+grpcio-status==1.71.2
+
+# --- Machine Learning / Deep Learning ---
+tensorflow==2.20.0
+keras==3.12.0
+jax==0.6.2
+jaxlib==0.6.2
+scikit-learn==1.7.2
+scipy==1.15.3
+numpy==1.26.4
+pandas==2.3.3
+joblib==1.5.2
+
+# --- Visualization / Media ---
+matplotlib==3.10.7
+opencv-contrib-python==4.11.0.86
+mediapipe==0.10.21
+pillow==12.0.0
+
+# --- Utility / Etc ---
+tqdm==4.67.1
+PyYAML==6.0.3
+typing-extensions==4.15.0
+packaging==25.0
+rich==14.2.0
