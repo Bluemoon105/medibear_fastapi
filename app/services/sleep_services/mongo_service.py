@@ -13,7 +13,7 @@ db = client[settings.MONGO_DB_NAME]
 chat_collection = db["chat_history"]
 
 #대화 내용 저장
-def save_chat(user_id: int, user_message: str, bot_response: str, chat_type: str = "general"):
+def save_chat(user_id: str, user_message: str, bot_response: str, chat_type: str = "general"):
     """대화 내용을 MongoDB에 저장"""
     chat_doc = {
         "user_id": user_id,
@@ -25,7 +25,7 @@ def save_chat(user_id: int, user_message: str, bot_response: str, chat_type: str
     chat_collection.insert_one(chat_doc)
     
 #최근 10개 데이터 불러오기    
-def get_user_chats(user_id: int, limit: int = 10):
+def get_user_chats(user_id: str, limit: int = 10):
     """가장 최근 10개의 대화 가져오되, 오래된 → 최신 순으로 정렬"""
     
     # 최신순으로 limit개 가져오기

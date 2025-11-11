@@ -15,21 +15,21 @@ def chat_general(req: dict):
 
 #일간 리포트
 @router.get("/report/daily/{user_id}")
-def daily_report(user_id: int):
+def daily_report(user_id: str):
     state = SleepState(req={}, user_id=user_id, messages=[], response="")
     result = sleep_graph_daily.invoke(state, start="daily_report")
     return {"report": result["response"]}
 
 #주간 리포트
 @router.get("/report/weekly/{user_id}")
-def weekly_report(user_id: int):
+def weekly_report(user_id: str):
     state = SleepState(req={}, user_id=user_id, messages=[], response="")
     result = sleep_graph_weekly.invoke(state, start="weekly_report")
     return {"report": result["response"]}
 
 #대화 기록 불러오기
 @router.get("/history/{user_id}")
-def get_chat_history(user_id: int):
+def get_chat_history(user_id: str):
     """특정 유저의 최근 대화 기록"""
     chats = get_user_chats(user_id)
     return {"user_id": user_id, "history": chats}
