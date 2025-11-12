@@ -2,6 +2,7 @@
 # 실행: uvicorn FastApi_exercise:app --host 0.0.0.0 --port 5000
 
 from fastapi import FastAPI, HTTPException
+
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Tuple
 
@@ -20,10 +21,26 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras import layers
 
+# 미들웨어 설정
+from fastapi.middleware.cors import CORSMiddleware
+
 # --------------------------
 # 전역 설정
 # --------------------------
 app = FastAPI(title="AI Coach Core (FastAPI + MediaPipe + CNN-LSTM)")
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,      # 개발 중이면 ["*"]도 가능
+    allow_credentials=True,
+    allow_methods=["*"],        # ← OPTIONS 포함
+    allow_headers=["*"],
+)
 
 # 모델/라벨
 cnn_lstm_model = None
@@ -633,6 +650,15 @@ def analyze_video(video_bytes: bytes) -> Dict[str, Any]:
 
     return result
 
+def safe_b64decode(b64_string: str) -> bytes:
+    # 앞부분에 data:video/mp4;base64, 이 있으면 제거
+    if b64_string.startswith("data:"):
+        b64_string = b64_string.split(",")[1]
+    # 패딩 보정
+    missing_padding = len(b64_string) % 4
+    if missing_padding:
+        b64_string += "=" * (4 - missing_padding)
+    return base64.b64decode(b64_string)
 
 # --------------------------
 # 라이프사이클: 모델/라벨/포즈 로드 & 종료
@@ -685,12 +711,12 @@ def analyze_json(payload: AnalyzeRequest):
 
         # 1) 이미지(base64)
         if payload.image:
-            image_bytes = base64.b64decode(payload.image)
+            image_bytes = safe_b64decode(payload.image)
             analysis_out = analyze_frame(image_bytes)
 
         # 2) 비디오(base64)
         elif payload.video:
-            video_bytes = base64.b64decode(payload.video)
+            video_bytes = safe_b64decode(payload.video)
             analysis_out = analyze_video(video_bytes)
             if "reps" in analysis_out and "fps" in analysis_out:
                 analysis_out["reps"] = filter_reps(analysis_out["reps"], analysis_out["fps"])

@@ -28,7 +28,7 @@ def send_message(message, image=None, video=None):
 
     # FastAPI 서버 호출 (Spring 프록시를 거치는 경우 주소 유지)
     try:
-        r = requests.post("http://localhost:8080/api/ai/analyze", json=payload)
+        r = requests.post("http://localhost:8080/exercise/analyze", json=payload)
         data = r.json()
     except Exception as e:
         return f"❌ 서버 요청 실패: {e}"
