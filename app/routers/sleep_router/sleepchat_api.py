@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-from app.services.sleep_services.mongo_service import get_user_chats
 from fastapi import APIRouter
 from app.graphs.sleep_graph import sleep_graph_general, sleep_graph_daily, sleep_graph_weekly, SleepState
 
