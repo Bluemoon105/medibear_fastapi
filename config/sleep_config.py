@@ -12,8 +12,6 @@ class Settings:
     APP_PORT = int(os.getenv("APP_PORT", 8000))
 
     POSTGRES_URL = os.getenv("POSTGRES_URL")
-    MONGO_URL = os.getenv("MONGO_URL")
-    MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
 
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     SECRET_KEY = os.getenv("SECRET_KEY")

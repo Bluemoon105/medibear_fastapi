@@ -6,7 +6,6 @@ from langchain_core.messages import AIMessage
 from pydantic import BaseModel
 from typing import Annotated, Any, Dict, List
 from app.services.sleep_services.user_service import get_daily_activity, get_weekly_activity, get_user_info
-from app.services.sleep_services.mongo_service import save_chat
 import google.generativeai as genai
 from langgraph.channels import LastValue
 from config.sleep_config import settings
@@ -48,7 +47,6 @@ def general_chat_node(state: SleepState):
 
     result = model.generate_content(prompt)
     response = result.text.strip()
-    save_chat(user_id, message, response, chat_type="general")
 
     return {"response": response, "messages": [AIMessage(content=response)]}
 
@@ -76,7 +74,6 @@ def daily_report_node(state: SleepState):
 
     result = model.generate_content(prompt)
     response = result.text.strip()
-    save_chat(user_id, "일간 리포트 요청", response, chat_type="report")
 
     return {"response": response, "messages": [AIMessage(content=response)]}
 
@@ -105,7 +102,6 @@ def weekly_report_node(state: SleepState):
 
     result = model.generate_content(prompt)
     response = result.text.strip()
-    save_chat(user_id, "주간 리포트 요청", response, chat_type="report")
 
     return {"response": response, "messages": [AIMessage(content=response)]}
 
