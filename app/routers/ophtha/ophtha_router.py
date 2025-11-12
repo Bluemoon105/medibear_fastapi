@@ -30,7 +30,7 @@ async def chat(body: ChatIn):
 		advice=out.get("advice", "")
 	)
     
-
+# 질병 분류
 @router.post("/upload/{disease}", response_model=AnalyzeOut)
 async def upload(disease: Literal["cataract", "glaucoma"],
                 file: UploadFile = File(...),
