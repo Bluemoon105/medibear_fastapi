@@ -35,7 +35,8 @@ def _safe_avg(items, key, ndigits=None):
 def general_chat_node(state: SleepState):
     req = state.req
     message = req.get("message")
-    member_no = req.get("member_no")  
+    member_no = state.member_no
+    user = get_user_info(member_no) or {}
 
     if not message:
         return {"response": "입력된 질문이 없습니다."}
@@ -44,7 +45,7 @@ def general_chat_node(state: SleepState):
     너는 수면 코치지만 친구처럼 따뜻하게 조언하는 챗봇이야.
     아래는 사용자의 질문이야. 너무 형식적이지 않게 대화하듯 답변해줘.
     
-    [사용자 번호]: {member_no}
+    [사용자 번호]: {user.get('name', '비공개')}
     [질문]: {message}
     """
 
