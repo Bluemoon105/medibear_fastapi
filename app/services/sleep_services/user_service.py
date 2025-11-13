@@ -4,13 +4,17 @@ from app.services.sleep_services.db_service import get_engine
 
 engine = get_engine()
 
-#사용자 정보 조회
-def get_user_info(user_id: int):
-    """PostgreSQL에서 사용자 기본정보 조회"""
+# 회원 기본 정보 조회
+def get_user_info(member_no: int):
+    """PostgreSQL에서 회원 기본 정보 조회"""
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT name, gender, birth_date FROM users WHERE user_id = :user_id"),
-            {"user_id": user_id}
+            text("""
+                SELECT name, gender, birth_date 
+                FROM member_tb 
+                WHERE member_no = :member_no
+            """),
+            {"member_no": member_no}
         ).mappings().first()
 
     if not result:
@@ -30,10 +34,11 @@ def get_user_info(user_id: int):
         "gender": result["gender"],
         "age": age
     }
-    
-#하루 활동 정보 조회    
-def get_daily_activity(user_id: int):
-    """PostgreSQL에서 하루 활동 데이터 조회"""
+
+
+# 하루 활동 정보 조회
+def get_daily_activity(member_no: int):
+    """PostgreSQL에서 특정 회원의 최신 하루 활동 데이터 조회"""
     with engine.connect() as conn:
         result = conn.execute(
             text("""
@@ -45,12 +50,12 @@ def get_daily_activity(user_id: int):
                     caffeine_mg,
                     alcohol_consumption,
                     physical_activity_hours
-                FROM daily_activities
-                WHERE user_id = :user_id
+                FROM daily_activities_tb
+                WHERE member_no = :member_no
                 ORDER BY created_at DESC
                 LIMIT 1
             """),
-            {"user_id": user_id}
+            {"member_no": member_no}
         ).mappings().first()
 
     return result or {
@@ -62,18 +67,21 @@ def get_daily_activity(user_id: int):
         "alcohol_consumption": "N/A",
         "physical_activity_hours": "N/A",
     }
-    
-#주간 활동 정보 조회    
-def get_weekly_activity(user_id: str):
+
+
+# 주간 활동 정보 조회
+def get_weekly_activity(member_no: int):
+    """PostgreSQL에서 특정 회원의 최근 7일간 활동 데이터 조회"""
     with engine.connect() as conn:
         result = conn.execute(
             text("""
                 SELECT *
-                FROM daily_activities
-                WHERE user_id = :user_id
+                FROM daily_activities_tb
+                WHERE member_no = :member_no
                 ORDER BY date DESC
                 LIMIT 7
             """),
-            {"user_id": user_id}
+            {"member_no": member_no}
         ).mappings().all()
-        return result
+
+    return result

@@ -1,28 +1,42 @@
 from fastapi import APIRouter
-from fastapi import APIRouter
-from app.graphs.sleep_graph import sleep_graph_general, sleep_graph_daily, sleep_graph_weekly, SleepState
-
+from app.graphs.sleep_graph import (
+    sleep_graph_general,
+    sleep_graph_daily,
+    sleep_graph_weekly,
+    SleepState,
+)
 
 router = APIRouter(prefix="/sleepchat", tags=["Chat"])
 
-#일상 대화
+# 일반 대화
 @router.post("/message")
 def chat_general(req: dict):
-    state = SleepState(req=req, user_id=req.get("user_id"), messages=[], response="")
+    """
+    일반 수면 관련 대화 엔드포인트
+    """
+    member_no = req.get("member_no") 
+    state = SleepState(req=req, member_no=member_no, messages=[], response="")
     result = sleep_graph_general.invoke(state, start="general_chat")
     return {"response": result["response"]}
 
-#일간 리포트
-@router.get("/report/daily/{user_id}")
-def daily_report(user_id: str):
-    state = SleepState(req={}, user_id=user_id, messages=[], response="")
+
+# 일간 리포트
+@router.get("/report/daily/{member_no}")
+def daily_report(member_no: int):
+    """
+    특정 회원의 일간 리포트 요청
+    """
+    state = SleepState(req={}, member_no=member_no, messages=[], response="")
     result = sleep_graph_daily.invoke(state, start="daily_report")
     return {"report": result["response"]}
 
-#주간 리포트
-@router.get("/report/weekly/{user_id}")
-def weekly_report(user_id: str):
-    state = SleepState(req={}, user_id=user_id, messages=[], response="")
+
+# 주간 리포트
+@router.get("/report/weekly/{member_no}")
+def weekly_report(member_no: int):
+    """
+    특정 회원의 주간 리포트 요청
+    """
+    state = SleepState(req={}, member_no=member_no, messages=[], response="")
     result = sleep_graph_weekly.invoke(state, start="weekly_report")
     return {"report": result["response"]}
-

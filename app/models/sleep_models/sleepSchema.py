@@ -7,15 +7,12 @@ class UserInput(BaseModel):
     sleep_hours: float
     physical_activity_hours: float
     alcohol_consumption: float
-
-# 일상 대화
 class ChatRequest(BaseModel):
-    user_id: str
+    member_no: int  
     message: str
 
-# 수면 데이터 기반 대화
 class SleepChatRequest(BaseModel):
-    user_id: str
+    member_no: int  
     sleep_quality: float
     fatigue_score: float
     recommended_range: str

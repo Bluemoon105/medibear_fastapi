@@ -1,6 +1,13 @@
 # --- FastAPI / Web ---
 fastapi==0.120.4
 uvicorn==0.38.0
+
+transformers # 텍스트 분석
+accelerate # 허깅페이스 
+safetensors 
+sentencepiece 
+huggingface-hub
+
 python-dotenv==1.2.1
 requests==2.32.3
 orjson==3.11.4
