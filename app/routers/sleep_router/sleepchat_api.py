@@ -1,42 +1,60 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.graphs.sleep_graph import (
     sleep_graph_general,
     sleep_graph_daily,
-    sleep_graph_weekly,
-    SleepState,
+    sleep_graph_weekly
 )
+from app.services.sleep_services.user_service import get_member_no_by_email
 
-router = APIRouter(prefix="/sleepchat", tags=["Chat"])
+router = APIRouter(prefix="/sleepchat")
 
 # 일반 대화
 @router.post("/message")
-def chat_general(req: dict):
-    """
-    일반 수면 관련 대화 엔드포인트
-    """
-    member_no = req.get("member_no") 
-    state = SleepState(req=req, member_no=member_no, messages=[], response="")
-    result = sleep_graph_general.invoke(state, start="general_chat")
+def chat_message(data: dict):
+
+    email = data.get("email")
+    message = data.get("message")
+
+    if not email or not message:
+        raise HTTPException(status_code=400, detail="email and message are required")
+
+    # email → member_no 변환
+    member_no = get_member_no_by_email(email)
+
+    # LangGraph 호출
+    result = sleep_graph_general.invoke({
+        "req": {"email": email, "message": message},
+        "email": email,
+        "member_no": member_no,
+    })
+
     return {"response": result["response"]}
 
+# 일일 리포트
+@router.get("/report/daily/{email}")
+def daily_report(email: str):
 
-# 일간 리포트
-@router.get("/report/daily/{member_no}")
-def daily_report(member_no: int):
-    """
-    특정 회원의 일간 리포트 요청
-    """
-    state = SleepState(req={}, member_no=member_no, messages=[], response="")
-    result = sleep_graph_daily.invoke(state, start="daily_report")
+    member_no = get_member_no_by_email(email)
+
+    result = sleep_graph_daily.invoke({
+        "req": {"email": email},
+        "email": email,
+        "member_no": member_no,
+    })
+
     return {"report": result["response"]}
 
 
 # 주간 리포트
-@router.get("/report/weekly/{member_no}")
-def weekly_report(member_no: int):
-    """
-    특정 회원의 주간 리포트 요청
-    """
-    state = SleepState(req={}, member_no=member_no, messages=[], response="")
-    result = sleep_graph_weekly.invoke(state, start="weekly_report")
+@router.get("/report/weekly/{email}")
+def weekly_report(email: str):
+
+    member_no = get_member_no_by_email(email)
+
+    result = sleep_graph_weekly.invoke({
+        "req": {"email": email},
+        "email": email,
+        "member_no": member_no,
+    })
+
     return {"report": result["response"]}

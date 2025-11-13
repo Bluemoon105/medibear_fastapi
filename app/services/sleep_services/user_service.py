@@ -4,14 +4,42 @@ from app.services.sleep_services.db_service import get_engine
 
 engine = get_engine()
 
-# 회원 기본 정보 조회
-def get_user_info(member_no: int):
-    """PostgreSQL에서 회원 기본 정보 조회"""
+# ---------------------------------------------------------
+# 1) email → member_no 변환
+# ---------------------------------------------------------
+def get_member_no_by_email(email: str):
     with engine.connect() as conn:
         result = conn.execute(
             text("""
-                SELECT name, gender, birth_date 
-                FROM member_tb 
+                SELECT member_no
+                FROM member_tb
+                WHERE email = :email
+            """),
+            {"email": email}
+        ).mappings().first()
+
+    if not result:
+        return None
+
+    return result["member_no"]
+
+
+# ---------------------------------------------------------
+# 2) 회원 기본 정보 조회
+# ---------------------------------------------------------
+def get_user_info(member_no: int):
+    if member_no is None:
+        return {
+            "name": "N/A",
+            "gender": "N/A",
+            "age": "N/A"
+        }
+
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("""
+                SELECT name, gender, birth_date
+                FROM member_tb
                 WHERE member_no = :member_no
             """),
             {"member_no": member_no}
@@ -19,15 +47,16 @@ def get_user_info(member_no: int):
 
     if not result:
         return {
-            "name": "알 수 없음",
-            "gender": "비공개",
-            "age": "비공개",
+            "name": "N/A",
+            "gender": "N/A",
+            "age": "N/A"
         }
 
-    # 생년월일 → 나이 계산
     birth = result["birth_date"]
     today = date.today()
-    age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+    age = today.year - birth.year - (
+        (today.month, today.day) < (birth.month, birth.day)
+    )
 
     return {
         "name": result["name"],
@@ -36,9 +65,13 @@ def get_user_info(member_no: int):
     }
 
 
-# 하루 활동 정보 조회
+# ---------------------------------------------------------
+# 3) 최신 일일 활동 조회
+# ---------------------------------------------------------
 def get_daily_activity(member_no: int):
-    """PostgreSQL에서 특정 회원의 최신 하루 활동 데이터 조회"""
+    if member_no is None:
+        return {}
+
     with engine.connect() as conn:
         result = conn.execute(
             text("""
@@ -58,20 +91,16 @@ def get_daily_activity(member_no: int):
             {"member_no": member_no}
         ).mappings().first()
 
-    return result or {
-        "sleep_hours": "N/A",
-        "predicted_fatigue_score": "N/A",
-        "recommended_sleep_range": "N/A",
-        "predicted_sleep_quality": "N/A",
-        "caffeine_mg": "N/A",
-        "alcohol_consumption": "N/A",
-        "physical_activity_hours": "N/A",
-    }
+    return result or {}
 
 
-# 주간 활동 정보 조회
+# ---------------------------------------------------------
+# 4) 최근 7일 활동 조회
+# ---------------------------------------------------------
 def get_weekly_activity(member_no: int):
-    """PostgreSQL에서 특정 회원의 최근 7일간 활동 데이터 조회"""
+    if member_no is None:
+        return []
+
     with engine.connect() as conn:
         result = conn.execute(
             text("""
