@@ -743,7 +743,7 @@ def analyze_json(payload: AnalyzeRequest):
         }
 
         # ✅ LLM 서버 요청
-        res = requests.post("http://localhost:8000/chat_with_analysis", json=send_data)
+        res = requests.post("http://localhost:7000/chat_with_analysis", json=send_data)
         if res.status_code != 200:
             raise HTTPException(status_code=500, detail="LLM 서버 응답 실패")
 
