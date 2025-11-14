@@ -26,7 +26,7 @@ MODEL_PATH = "../../models/exercise_models/qwen2.5-3b-instruct-q4_k_m.gguf"   # 
 llm = Llama(
     model_path=MODEL_PATH,
     # 이전 : 2048
-    n_ctx=4096,
+    n_ctx=2048,
     n_threads=max(1, (os.cpu_count() or 2) - 1),
     n_batch=128,
     logits_all=False,
