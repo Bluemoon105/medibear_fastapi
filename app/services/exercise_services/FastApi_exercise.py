@@ -4,8 +4,12 @@
 from fastapi import FastAPI, HTTPException
 
 from pydantic import BaseModel
+<<<<<<< HEAD
 from typing import Optional, Dict, Any, List, Tuple
 
+=======
+from typing import Optional, Dict, Any, List
+>>>>>>> main
 import os, io, math, base64
 import numpy as np
 import cv2
@@ -29,6 +33,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # --------------------------
 app = FastAPI(title="AI Coach Core (FastAPI + MediaPipe + CNN-LSTM)")
 
+<<<<<<< HEAD
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -41,6 +46,8 @@ app.add_middleware(
     allow_methods=["*"],        # ← OPTIONS 포함
     allow_headers=["*"],
 )
+=======
+>>>>>>> main
 
 # 모델/라벨
 cnn_lstm_model = None
@@ -676,7 +683,11 @@ def on_startup():
 
     # 모델 로드 (커스텀 레이어 등록)
     cnn_lstm_model = load_model(
+<<<<<<< HEAD
         "../../models/exercise_models/cnn_lstm_model_stronger.h5",
+=======
+        "../../models/exercise_models/cnn_lstm_exercise_model.keras",
+>>>>>>> main
         custom_objects={"TemporalAttention": TemporalAttention}
     )
 
@@ -711,6 +722,7 @@ def analyze_json(payload: AnalyzeRequest):
 
         # 1) 이미지(base64)
         if payload.image:
+<<<<<<< HEAD
             image_bytes = safe_b64decode(payload.image)
             analysis_out = analyze_frame(image_bytes)
 
@@ -722,6 +734,23 @@ def analyze_json(payload: AnalyzeRequest):
                 analysis_out["reps"] = filter_reps(analysis_out["reps"], analysis_out["fps"])
                 if "global_stats" in analysis_out:
                     analysis_out["global_stats"]["rep_count"] = len(analysis_out["reps"])
+=======
+            image_bytes = base64.b64decode(payload.image)
+            result = analyze_frame(image_bytes)
+            if msg:
+                result["message"] = msg
+            print(result)
+            return AnalyzeResponse(**result)
+
+        # 2) 동영상(base64)
+        if payload.video:
+            video_bytes = base64.b64decode(payload.video)
+            result = analyze_video(video_bytes)  # 프레임별 pose/단계/프레임별 예측 포함
+            if msg:
+                result["message"] = msg
+            print(result)
+            return AnalyzeResponse(**result)
+>>>>>>> main
 
         # 3) 텍스트만
         elif msg:

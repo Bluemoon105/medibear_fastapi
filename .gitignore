@@ -177,5 +177,10 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+<<<<<<< HEAD
 # Gradio SSL 인증서 파일 무시
 app/services/exercise_services/.gradio/certificate.pem
+=======
+# Ignore large model files
+app/models/calorie/calorie_model.pkl
+>>>>>>> main

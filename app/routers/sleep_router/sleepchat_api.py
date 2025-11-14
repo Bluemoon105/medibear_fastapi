@@ -1,34 +1,60 @@
-from fastapi import APIRouter
-from app.services.sleep_services.llm_service import generate_general_chat, generate_daily_report, generate_weekly_report
-from app.services.sleep_services.mongo_service import get_user_chats
-from app.models.sleep_models.sleepSchema import ChatRequest
+from fastapi import APIRouter, HTTPException
+from app.graphs.sleep_graph import (
+    sleep_graph_general,
+    sleep_graph_daily,
+    sleep_graph_weekly
+)
+from app.services.sleep_services.user_service import get_member_no_by_email
 
-router = APIRouter(prefix="/sleepchat", tags=["Chat"])
+router = APIRouter(prefix="/sleepchat")
 
 # 일반 대화
 @router.post("/message")
-def chat_general(req: ChatRequest):
-    """일상 수면 관련 대화"""
-    response = generate_general_chat(req)
-    return {"response": response}
+def chat_message(data: dict):
 
-#일간 리포트
-@router.get("/report/daily/{user_id}")
-def daily_report(user_id:int):
-    """오늘의 수면 리포트"""
-    response = generate_daily_report(user_id)
-    return {"report":response}
+    email = data.get("email")
+    message = data.get("message")
+
+    if not email or not message:
+        raise HTTPException(status_code=400, detail="email and message are required")
+
+    # email → member_no 변환
+    member_no = get_member_no_by_email(email)
+
+    # LangGraph 호출
+    result = sleep_graph_general.invoke({
+        "req": {"email": email, "message": message},
+        "email": email,
+        "member_no": member_no,
+    })
+
+    return {"response": result["response"]}
+
+# 일일 리포트
+@router.get("/report/daily/{email}")
+def daily_report(email: str):
+
+    member_no = get_member_no_by_email(email)
+
+    result = sleep_graph_daily.invoke({
+        "req": {"email": email},
+        "email": email,
+        "member_no": member_no,
+    })
+
+    return {"report": result["response"]}
+
 
 # 주간 리포트
-@router.get("/report/weekly/{user_id}")
-def weekly_report(user_id: int):
-    """최근 7일 평균 기반 주간 리포트"""
-    response = generate_weekly_report(user_id)
-    return {"report": response}
+@router.get("/report/weekly/{email}")
+def weekly_report(email: str):
 
-#대화 기록 불러오기
-@router.get("/history/{user_id}")
-def get_chat_history(user_id: int):
-    """특정 유저의 최근 대화 기록"""
-    chats = get_user_chats(user_id)
-    return {"user_id": user_id, "history": chats}
+    member_no = get_member_no_by_email(email)
+
+    result = sleep_graph_weekly.invoke({
+        "req": {"email": email},
+        "email": email,
+        "member_no": member_no,
+    })
+
+    return {"report": result["response"]}
