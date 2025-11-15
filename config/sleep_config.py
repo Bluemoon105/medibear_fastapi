@@ -13,7 +13,7 @@ class Settings:
 
     POSTGRES_URL = os.getenv("POSTGRES_URL")
 
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     SECRET_KEY = os.getenv("SECRET_KEY")
 
 settings = Settings()
