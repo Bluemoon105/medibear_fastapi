@@ -1,6 +1,7 @@
 import os 
 import joblib
 import pandas as pd
+import numpy as np
 from app.models.sleep_models.sleepSchema import UserInput
 
 MODEL_PATH = "app/models/sleep_models/best_sleep_quality_rf_bundle.pkl"
@@ -12,64 +13,90 @@ model = bundle["model"]
 scaler = bundle["scaler"]
 columns = bundle["columns"]
 
-#수면 시간 추천
-def rule_based_sleep_recommendation(
-    sleep_hours: float,
-    physical_activity_hours: float,
-    caffeine_mg: float,
-    alcohol_consumption: float,
-    fatigue_score: float,
-) -> tuple[float, float]:
+# -------------------------------------------------------
+# 1. 모델 기반 최적 수면시간 탐색
+# -------------------------------------------------------
+def find_optimal_sleep(model, scaler, columns, base_input):
     """
-    사용자의 생활 패턴을 기반으로 최적 수면시간 범위를 추천
+    4~10시간을 0.1 단위로 모두 테스트하여
+    가장 높은 predicted_quality 점수를 주는 sleep_hours 선택
     """
-    
-    # 기본 추천 범위(기본값)
-    min_optimal, max_optimal = 7.0, 7.5
-    
-    # 수면 충분 + 활동 적음 + 카페인/알코올 거의 없음 → 6.5~7.0
-    if sleep_hours >= 7.5 and physical_activity_hours < 1.0 and caffeine_mg < 100 and alcohol_consumption < 0.5:
-        min_optimal, max_optimal = 6.5, 7.0
+    hours = np.arange(4.0, 10.0, 0.1)
+    scores = []
 
-    #평균 수준 → 7.0~7.5
-    elif 6.5 <= sleep_hours <= 7.5 and 1.0 <= physical_activity_hours <= 2.0 and 100 <= caffeine_mg <= 250:
-        min_optimal, max_optimal = 7.5, 8.0
+    for h in hours:
+        row = base_input.copy()
+        row["sleep_hours"] = h
 
-    # 활동 많음 / 카페인 or 알코올 높음 / 수면 부족 → 7.5~8.5
-    elif sleep_hours < 6.5 or physical_activity_hours > 2.0 or caffeine_mg > 250 or alcohol_consumption > 1.0:
-        min_optimal, max_optimal = 8.0, 8.5
+        df = pd.DataFrame([row])[columns]
+        X_scaled = scaler.transform(df)
+        y_pred = model.predict(X_scaled)[0]
 
-    # 피로도 점수가 높을 때 (예: 60 이상) → 약간 더 수면 필요
-    if fatigue_score >= 60:
-        min_optimal += 0.5
-        max_optimal += 0.5
+        scores.append((h, y_pred))
 
-    # 최대 9시간 제한
-    max_optimal = min(max_optimal, 9.0)
+    df_result = pd.DataFrame(scores, columns=["sleep_hours", "predicted_quality"])
+    best_row = df_result.loc[df_result["predicted_quality"].idxmax()]  # 최고 수면질
 
-    return round(min_optimal, 1), round(max_optimal, 1)
+    return df_result, best_row
 
-#피로토 예측
+
+# -------------------------------------------------------
+# 2. 컨디션 레벨 계산
+# -------------------------------------------------------
+def determine_condition_level(fatigue_score: float) -> str:
+    if fatigue_score < 25:
+        return "좋음"
+    elif fatigue_score < 50:
+        return "보통"
+    elif fatigue_score < 75:
+        return "나쁨"
+    else:
+        return "최악"
+
+
+# -------------------------------------------------------
+# 3. 피로도 + 최적 수면 시간 예측
+# -------------------------------------------------------
 def predict_fatigue(data: UserInput):
+
+    # ---------- 모델 입력 ----------
     df = pd.DataFrame([data.model_dump()])[columns]
     X_scaled = scaler.transform(df)
-    sleep_quality = float(model.predict(X_scaled)[0])
+    sleep_quality = float(model.predict(X_scaled)[0])  # 1~4 수면질 점수
 
-    # sleep_quality (1~4) → 피로도 (0~100) 변환
-    fatigue_score = round(100 * (4 - sleep_quality) / 3, 2)
+    # ---------- 피로도 계산 ----------
+    fatigue_score = ((4 - sleep_quality) / 3) * 100  # 0~100
 
-    # 컨디션 등급
-    if fatigue_score < 25:
-        condition = "좋음" 
-    elif fatigue_score < 50:
-        condition = "보통"
-    elif fatigue_score < 75:
-        condition = "나쁨"
-    else:
-        condition = "최악"
+    fatigue_score += data.physical_activity_hours * 2.0
+    fatigue_score += data.caffeine_mg * 0.05
+
+    if data.alcohol_consumption == 1:  # boolean → 0 or 1
+        fatigue_score += 15.0
+
+    fatigue_score = max(0, min(100, fatigue_score))
+
+    condition = determine_condition_level(fatigue_score)
+
+    # ---------- 모델 기반 최적 수면시간 탐색 ----------
+    base_input = data.model_dump()
+    _, best_row = find_optimal_sleep(model, scaler, columns, base_input)
+
+    optimal_sleep = round(float(best_row["sleep_hours"]), 2)
+    optimal_quality = round(float(best_row["predicted_quality"]), 3)
+
+    # ---------- 추천 구간 생성 ----------
+    # 최적값 주변으로 ±0.3h (예: 7.8 → 7.5~8.1)
+    recommended_min = round(max(4.0, optimal_sleep - 0.3), 1)
+    recommended_max = round(min(10.0, optimal_sleep + 0.3), 1)
 
     return {
         "predicted_sleep_quality": round(sleep_quality, 3),
-        "predicted_fatigue_score": fatigue_score,
-        "condition_level": condition
+        "predicted_fatigue_score": round(fatigue_score, 2),
+        "condition_level": condition,
+        "optimal_sleep_hours": optimal_sleep,
+        "optimal_predicted_quality": optimal_quality,
+        "recommended_sleep_range": {
+            "min": recommended_min,
+            "max": recommended_max
+        }
     }
