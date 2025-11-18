@@ -119,7 +119,6 @@ def _build_payload(
         "app": {"name": "StressCare AI", "locale": "ko-KR", "version": "0.1.0"},
     }
 
-
 class StressLLMService:
     """
     - 보고서(코칭) 생성: generate_coaching(...)

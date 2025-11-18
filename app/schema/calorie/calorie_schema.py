@@ -21,3 +21,4 @@ class CalorieLog(BaseModel):
 class LlmResponse(BaseModel):
     prompt: str
     advice: str
+    summary: str

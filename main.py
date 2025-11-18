@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.calorie import calorie_router
 from app.routers.ophtha import ophtha_router
 from pydantic import BaseModel
-# from app.routers import predict
 from app.routers.sleep_router import sleep_api, sleepchat_api
 from app.routers.stresscare.stress_router import router as stresscare_router
 import uvicorn
@@ -22,7 +21,6 @@ app.add_middleware(
 # app.include_router(predict.router, prefix="/predict", tags=["prediction"])
 app.include_router(calorie_router.router, prefix="/calorie", tags=["calorie_prediction"])
 app.include_router(ophtha_router.router, prefix="/ophtha", tags=["ophtha"])
-# app.include_router(predict.router, prefix="/predict", tags=["prediction"])
 app.include_router(sleep_api.router)
 app.include_router(sleepchat_api.router)
 app.include_router(stresscare_router)
