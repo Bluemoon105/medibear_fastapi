@@ -31,8 +31,7 @@ def call_llm(prompt: str, model_name: str = DEFAULT_MODEL):
                 "role": "system",
                 "content": (
                     "너는 수면 전문 AI 코치야. "
-                    "절대로 한자(漢字), 중국어/일본어 문자를 포함하지 말고 "
-                    "모든 설명은 쉽고 자연스럽게 존댓말로 작성해."
+                    "모든 설명은 한국어로 쉽고 자연스럽게 존댓말로 작성해."
                 )
             },
             {"role": "user", "content": prompt}
