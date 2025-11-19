@@ -20,13 +20,28 @@ clinet = Groq(api_key=settings.GROQ_API_KEY)
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 
 def call_llm(prompt: str, model_name: str = DEFAULT_MODEL):
+    def remove_hanja(text: str) -> str:
+        import re
+        return re.sub(r"[\u4E00-\u9FFF]", "", text)
+
     response = clinet.chat.completions.create(
         model=model_name,
-        messages=[{"role": "user", "content":prompt}],
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "너는 수면 전문 AI 코치야. "
+                    "절대로 한자(漢字), 중국어/일본어 문자를 포함하지 말고 "
+                    "모든 설명은 쉽고 자연스럽게 존댓말로 작성해."
+                )
+            },
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.7
     )
-    return response.choices[0].message.content
 
+    cleaned = remove_hanja(response.choices[0].message.content)
+    return cleaned
 
 class SleepState(BaseModel):
     req: Annotated[Dict[str, Any], LastValue(Dict[str, Any])]
