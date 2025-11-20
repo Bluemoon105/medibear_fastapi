@@ -11,5 +11,10 @@
         "Weight Training": 8,
         "Yoga": 9,
         "Unknown": -1
+    },
+    "gender": {
+        "F": 0,
+        "M": 1,
+        "Unknown": -1
     }
 }

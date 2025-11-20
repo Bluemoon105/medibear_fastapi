@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+from typing import Optional, List
 # ex) typescript interface?
 # react에서 사용자가 입력할 값
 class CalorieRequest(BaseModel):
@@ -7,6 +7,7 @@ class CalorieRequest(BaseModel):
     weight_kg: float = Field(..., description="체중 (kg)")
     activity_type: str = Field(..., description="활동 종류 (예: Running, Cycling, Swimming)")
     bmi: float = Field(..., description="체질량지수")
+    gender: str = Field(..., description="성별 (M, F)")
 
 class CalorieResponse(BaseModel):
     predicted_calories: float = Field(..., description="예측된 칼로리 소모량 (kcal/min)")
@@ -22,3 +23,17 @@ class LlmResponse(BaseModel):
     prompt: str
     advice: str
     summary: str
+
+class MemberInfo(BaseModel):
+    name: str
+    gender: str
+
+class LatestFitnessInfo(BaseModel):
+    heightCm: Optional[float] = None
+    weightKg: float
+    bmi: float
+    
+class CalorieAnalyzeRequest(BaseModel):
+    member: MemberInfo
+    latest: LatestFitnessInfo
+    logs: List[CalorieLog]

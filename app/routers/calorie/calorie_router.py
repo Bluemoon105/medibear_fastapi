@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.schema.calorie.calorie_schema import CalorieRequest, CalorieResponse, CalorieLog, LlmResponse
+from app.schema.calorie.calorie_schema import CalorieRequest, CalorieResponse, CalorieLog, LlmResponse, CalorieAnalyzeRequest
 from app.services.calorie.calorie_service import predict_calories, llm_anaylze_calorie
 from typing import List
 
@@ -12,13 +12,14 @@ async def predict(data: CalorieRequest):
         duration_minutes=data.duration_minutes,
         weight_kg=data.weight_kg,
         activity_type=data.activity_type,
-        bmi=data.bmi
+        bmi=data.bmi,
+        gender=data.gender
     )
     
     return {"predicted_calories": round(result * data.duration_minutes, 2)}
 
 @router.post("/llm/analyze", response_model=LlmResponse)
-async def analyze(logs: List[CalorieLog]):
+async def analyze(request: CalorieAnalyzeRequest):
     """Spring boot에서 DB데이터를 받아서 LLM이 분석"""
-    result = llm_anaylze_calorie(logs)
+    result = llm_anaylze_calorie(request)
     return  result
