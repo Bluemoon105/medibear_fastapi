@@ -7,6 +7,7 @@ engine = create_engine(
     max_overflow=20,
     pool_timeout=30,
     pool_pre_ping=True,
+    connect_args={"sslmode": "require"},
 )
 
 def get_engine():
