@@ -5,7 +5,7 @@ import numpy as np
 from app.models.sleep_models.sleepSchema import UserInput
 
 # 모델 로드
-MODEL_PATH = "app/models/sleep_models/best_sleep_quality_rf_bundle.pkl"
+MODEL_PATH = "app/models/sleep_models/best_sleep_quality_xgb_bundle.pkl"
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"모델 파일이 없습니다: {MODEL_PATH}")
 
