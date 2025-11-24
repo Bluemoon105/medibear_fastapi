@@ -17,7 +17,7 @@ from config.sleep_config import settings
 
 clinet = Groq(api_key=settings.GROQ_API_KEY)
 
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 def call_llm(prompt: str, model_name: str = DEFAULT_MODEL):
     def remove_hanja(text: str) -> str:
@@ -32,6 +32,7 @@ def call_llm(prompt: str, model_name: str = DEFAULT_MODEL):
                 "content": (
                     "너는 수면 전문 AI 코치야. "
                     "모든 설명은 한국어로 쉽고 자연스럽게 존댓말로 작성해."
+                    "출력에 사용 가능한 문자는 다음으로 제한한다: 한글, 한글 자모, 숫자(0-9), 공백, 기본적인 문장부호(.,!?-).  그 외 유니코드 문자(아랍어, 러시아어, 중국어 등)이 포함되면 잘못된 출력으로 간주하고 다시 생성하라."
                 )
             },
             {"role": "user", "content": prompt}
@@ -99,7 +100,7 @@ def daily_report_node(state: SleepState):
     아래는 오늘의 데이터입니다.
 
     이름: {user.get('name')}
-    나이: {user.get('age')}
+    나이: {user.get('age')} 세
     성별: {user.get('gender')}
 
     수면시간: {activity.get('sleep_hours')}
