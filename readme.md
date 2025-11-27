@@ -68,3 +68,17 @@
 ### 3. 모델 결과 구조화 및 표준화
 - LLM 응답 파싱(JSON parsing) 안정화
 - Spring Boot에서 바로 사용할 수 있는 형태로 변환
+
+## 모델 학습 성능 비교 및 응답 품질 모니터링
+### 1. MLflow 기반 수면 예측 모델 성능 비교
+- 수면 피로도 예측·권장 수면 시간 추천을 위해 다양한 ML 모델 실험(RandomForest, XGBoost, LightGBM 등)
+- MLflow Tracking으로 R²·MAE·RMSE 등을 자동 기록하고 실험 이력 관리
+- MLflow UI를 이용해 모델 성능을 시각적으로 비교하여 최적 모델 선정
+- 선정된 모델을 `.pkl`로 FastAPI에서 로드하여 실시간 추론 API 제공
+
+### 2. LangSmith를 활용한 LLM 응답 속도 및 품질 모니터링
+- Groq/OpenAI 모델 호출 시 LangSmith Trace 활성화
+- 요청별 Latency, Token 사용량, Prompt/Response 로그 자동 기록
+- Prompt Engineering 개선 시 응답 속도·안정성 변화 비교 분석
+- 수면 분석 API의 전체 LLM 품질·성능 모니터링 체계 구축
+
