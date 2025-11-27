@@ -14,15 +14,7 @@ from typing import Tuple
 
 import numpy as np
 import librosa
-
-# tf-keras / tensorflow.keras 로더 호환
-try:
-    from tf_keras.models import load_model as _load_model
-    LOADER_NAME = "tf_keras"
-except Exception:  # pragma: no cover
-    from tensorflow.keras.models import load_model as _load_model
-    LOADER_NAME = "tf.keras"
-
+import onnxruntime as ort
 
 def _resolve_under_app(relative_path: str) -> str:
     """
