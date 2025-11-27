@@ -17,6 +17,8 @@ psycopg2-binary   # PostgreSQL 연결용
 librosa
 soundfile
 
+onnxruntime
+
 groq
 openai
 
