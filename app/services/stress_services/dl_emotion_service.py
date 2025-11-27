@@ -38,7 +38,7 @@ class EmotionDLService:
         env_model = os.getenv("EMOTION_MODEL_PATH", "").strip()
         env_label = os.getenv("EMOTION_LABEL_PATH", "").strip()
 
-        default_model_rel = os.path.join("models", "stresscare_models", "emotion_cnn_lstm_all.h5")
+        default_model_rel = os.path.join("models", "stresscare_models", "emotion_model.onnx")
         default_label_rel = os.path.join("models", "stresscare_models", "emotion_labels_all.npy")
 
         # env가 절대경로가 아니면 app 기준으로 해석
