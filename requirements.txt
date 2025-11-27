@@ -1,44 +1,32 @@
-# --- FastAPI / Web ---
-fastapi==0.120.4
-uvicorn==0.38.0
+fastapi
+uvicorn[standard]
 
-python-dotenv==1.2.1
-requests==2.32.3
-orjson==3.11.4
-pydantic==2.12.4
-pydantic-core==2.41.5
+pydantic
+python-dotenv
 
-# --- MongoDB (via PyMongo) ---
-pymongo==4.15.3
+requests
+numpy
+pandas
+joblib
+scikit-learn
 
-# --- LangGraph / LLM Framework ---
-langchain-core==1.0.3
-langgraph==1.0.2
-langgraph-checkpoint==3.0.1
-langgraph-prebuilt==1.0.2
-langgraph-sdk==0.2.9
-langsmith==0.4.41
+sqlalchemy
+psycopg2-binary   # PostgreSQL 연결용
 
-# --- Machine Learning / Deep Learning ---
-# tensorflow==2.20.0
-keras==3.12.0
-jax==0.6.2
-jaxlib==0.6.2
-scikit-learn==1.7.2
-scipy==1.15.3
-numpy==1.26.4
-pandas==2.3.3
-joblib==1.5.2
+librosa
+soundfile
 
-# --- Visualization / Media ---
-matplotlib==3.10.7
-opencv-contrib-python==4.11.0.86
-mediapipe==0.10.21
-pillow==12.0.0
+groq
+openai
 
-# --- Utility / Etc ---
-tqdm==4.67.1
-PyYAML==6.0.3
-typing-extensions==4.15.0
-packaging==25.0
-rich==14.2.0
+langgraph
+langchain
+langchain-core
+
+python-multipart   # File Upload
+
+# 필요 시 CORS 사용
+starlette
+
+# (Optional) audio 처리 위해 ffmpeg-python
+ffmpeg-python
