@@ -1,4 +1,5 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Literal
+#stress_router.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from pydantic import BaseModel, Field
 
@@ -6,19 +7,43 @@ from app.services.stress_services.dl_emotion_service import EmotionDLService
 from app.services.stress_services.ml_service import StressMLService
 from app.services.stress_services.llm_service import StressLLMService
 
+# 그래프 v2 (DiagnosisState + Graph Wrapper) + 위기 유틸
+from app.graphs.stress_graph import (
+    DiagnosisState,
+    StressDiagnosisGraph,
+    StressInterviewGraph,
+    detect_crisis,
+    render_crisis_message,
+)
+
 router = APIRouter(prefix="/stress", tags=["stresscare"])
 
 _dl = EmotionDLService()
 _ml = StressMLService()
 _llm = StressLLMService()
 
-# 공용 스키마
+
+# ============================================================
+# 공용 모델
+# ============================================================
+
 class ReportIn(BaseModel):
-    sleepHours: Optional[float] = Field(None, description="전날 수면 시간(시간)")
-    activityLevel: Optional[float] = Field(None, description="활동 지수(0~10)")
-    caffeineCups: Optional[float] = Field(None, description="카페인 섭취(잔/일)")
-    primaryEmotion: Optional[str] = Field("unknown", description="음성 분석 감정(선택)")
-    comment: Optional[str] = Field(None, description="사용자 메모")
+    sleepHours: Optional[float] = Field(
+        None, description="전날 수면 시간(시간 단위)"
+    )
+    activityLevel: Optional[float] = Field(
+        None, description="활동 지수(0~10)"
+    )
+    caffeineCups: Optional[float] = Field(
+        None, description="카페인 섭취(잔/일)"
+    )
+    primaryEmotion: Optional[str] = Field(
+        "unknown", description="주요 감정 라벨 (예: happy, sad, angry...)"
+    )
+    comment: Optional[str] = Field(
+        "", description="자유 서술형 코멘트"
+    )
+
 
 class ReportOut(BaseModel):
     stressScore: float
@@ -26,224 +51,387 @@ class ReportOut(BaseModel):
     coachingText: str
     meta: Dict[str, Any]
 
+
 class ChatTurn(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
+
 class ChatIn(BaseModel):
-    ml: Optional[Dict[str, Any]] = None
-    dl: Optional[Dict[str, Any]] = None
-    coaching: Optional[str] = ""
-    history: Optional[List[ChatTurn]] = []
+    ml: Dict[str, Any] = Field(default_factory=dict)
+    dl: Dict[str, Any] = Field(default_factory=dict)
+    coaching: str = ""
+    history: List[ChatTurn] = Field(default_factory=list)
     question: str
+
 
 class ChatOut(BaseModel):
     reply: str
 
 
+# ============================================================
+# Agent (인터뷰 기반 LangGraph 래퍼)
+# ============================================================
+
+class AgentState(BaseModel):
+    sleepHours: Optional[float] = None
+    activityLevel: Optional[float] = None
+    caffeineCups: Optional[float] = None
+    primaryEmotion: Optional[str] = None
+    comment: Optional[str] = None
+    interviewTurns: int = 0
+
+
+class AgentStepRequest(BaseModel):
+    state: AgentState = Field(default_factory=AgentState)
+    message: str
+    # history: [{ role: "assistant" | "user", content: string }]
+    history: List[Dict[str, str]] = Field(default_factory=list)
+
+
+class AgentStepResponse(BaseModel):
+    mode: Literal["ask", "interview", "final"]
+    reply: str
+    state: AgentState
+    report: Optional[ReportOut] = None
+    isCrisis: bool = False
+
+
+# ============================================================
 @router.get("/health")
 def health():
     return {"ok": True, "service": "stresscare", "status": "healthy"}
 
-# 1) 단독 음성 감정 분석
+
+# ============================================================
+# 0) Agent Interview Step
+# ============================================================
+
+@router.post("/agent/step", response_model=AgentStepResponse)
+def agent_step(body: AgentStepRequest):
+
+    print("[/agent/step] ", body.model_dump())
+
+    # 0) 위기 감지
+    if detect_crisis(body.message or ""):
+        return AgentStepResponse(
+            mode="final",
+            reply=render_crisis_message(),
+            state=body.state,
+            report=None,
+            isCrisis=True,
+        )
+
+    # 현재까지 완료된 인터뷰 턴 수
+    prev_turns = body.state.interviewTurns or 0
+    current_turn = prev_turns + 1
+    MAX_TURNS = 3
+
+    # 1) 인터뷰 진행 중 (최종 리포트 전)
+    if current_turn < MAX_TURNS:
+        # 그래프에는 "이전 턴 수"를 넘기고, 증가 자체는 node_interview가 담당
+        base_state = DiagnosisState(
+            user_query=body.state.comment or "",
+            sleep_hours=body.state.sleepHours,
+            activity_level=body.state.activityLevel,
+            caffeine_cups=body.state.caffeineCups,
+            interview_turns=prev_turns,
+        )
+
+        try:
+            # history를 함께 넘겨서 LLM이 직전 대화를 참고하도록
+            inter = StressInterviewGraph.invoke(
+                base_state,
+                history=body.history,
+            )
+            next_q = inter.next_question or "지금 상황을 조금 더 자세히 설명해 줄 수 있을까?"
+            # 그래프에서 증가된 턴을 그대로 사용
+            next_turns = inter.interview_turns or current_turn
+        except Exception as e:
+            print("[StressInterviewGraph 오류]", e)
+            next_q = "지금 상황을 조금 더 자세히 설명해 줄 수 있을까?"
+            next_turns = current_turn
+
+        # 첫 질문은 mode="ask", 이후는 "interview"
+        mode: Literal["ask", "interview"]
+        mode = "ask" if prev_turns == 0 else "interview"
+
+        return AgentStepResponse(
+            mode=mode,
+            reply=next_q,
+            state=AgentState(
+                sleepHours=body.state.sleepHours,
+                activityLevel=body.state.activityLevel,
+                caffeineCups=body.state.caffeineCups,
+                primaryEmotion=body.state.primaryEmotion,
+                comment=body.state.comment,
+                interviewTurns=next_turns,
+            ),
+            report=None,
+            isCrisis=False,
+        )
+
+    # 2) 인터뷰 종료 → DiagnosisGraph 실행
+    #    (history + 마지막 message를 Q/A로 정리)
+
+    interview_items_raw: List[Dict[str, str]] = []
+    last_q: Optional[str] = None
+
+    # 기존 히스토리에서 Q/A 추출
+    for h in body.history:
+        role = h.get("role")
+        content = h.get("content", "")
+        if role == "assistant":
+            last_q = content
+        elif role == "user" and last_q:
+            interview_items_raw.append(
+                {"question": last_q, "answer": content}
+            )
+            last_q = None
+
+    # 마지막 assistant 질문 + 현재 message 묶기
+    if last_q and body.message:
+        interview_items_raw.append(
+            {"question": last_q, "answer": body.message}
+        )
+
+    # DiagnosisState 인터뷰 포맷에 맞게 변환 (value 필드 사용)
+    interview_items: List[Dict[str, Any]] = []
+    for idx, item in enumerate(interview_items_raw, start=1):
+        interview_items.append(
+            {
+                "turn": idx,
+                "type": "generic",
+                "question": item.get("question"),
+                "value": item.get("answer"),   # stress_graph 쪽에서 읽는 필드
+            }
+        )
+
+    diag_state = DiagnosisState(
+        user_query=body.state.comment or "",
+        sleep_hours=body.state.sleepHours,
+        activity_level=body.state.activityLevel,
+        caffeine_cups=body.state.caffeineCups,
+        interview_turns=len(interview_items),
+        interview_data=interview_items,
+    )
+
+    try:
+        diag = StressDiagnosisGraph.invoke(diag_state)
+    except Exception as e:
+        print("[StressDiagnosisGraph 오류]", e)
+        fallback_report = ReportOut(
+            stressScore=0.0,
+            primaryEmotion=body.state.primaryEmotion,
+            coachingText=(
+                "지금까지의 대화를 정리하는 중에 문제가 발생했어요. "
+                "그래도 지금 느끼는 감정과 하루 패턴을 간단히 적어보면 도움이 될 수 있어요."
+            ),
+            meta={"interview": interview_items, "error": str(e)},
+        )
+        return AgentStepResponse(
+            mode="final",
+            reply=(
+                "지금까지 얘기해 준 내용을 정리하는 중 약간의 오류가 있었지만, "
+                "간단한 조언을 먼저 전달할게."
+            ),
+            state=AgentState(
+                sleepHours=body.state.sleepHours,
+                activityLevel=body.state.activityLevel,
+                caffeineCups=body.state.caffeineCups,
+                primaryEmotion=body.state.primaryEmotion,
+                comment=body.state.comment,
+                interviewTurns=len(interview_items),
+            ),
+            report=fallback_report,
+            isCrisis=False,
+        )
+
+    report = ReportOut(
+        stressScore=float(diag.stress_score or 0),
+        primaryEmotion=diag.emotion_state or body.state.primaryEmotion,
+        coachingText=diag.report or diag.diagnosis_summary or "",
+        meta={
+            "ml": getattr(diag, "ml_result", None),
+            "dl": getattr(diag, "dl_result", None),
+            "interview": interview_items,
+            "is_crisis": diag.is_crisis,
+            "crisis_message": diag.crisis_message,
+            "source": "StressDiagnosisGraph.v2",
+        },
+    )
+
+    return AgentStepResponse(
+        mode="final",
+        reply="지금까지 얘기해 준 내용을 기반으로 리포트를 정리했어! 😊",
+        state=AgentState(
+            sleepHours=body.state.sleepHours,
+            activityLevel=body.state.activityLevel,
+            caffeineCups=body.state.caffeineCups,
+            primaryEmotion=report.primaryEmotion,
+            comment=body.state.comment,
+            interviewTurns=len(interview_items),
+        ),
+        report=report,
+        isCrisis=bool(diag.is_crisis),
+    )
+
+
+# ============================================================
+# 1) DL 감정 분석
+# ============================================================
+
 @router.post("/audio")
 async def analyze_audio(file: UploadFile = File(...)):
     try:
         raw = await file.read()
-        # dl_emotion_service 내부 구현에 맞게 호출
-        # 예) predict_emotion_from_bytes / analyze 등 사용
         label, prob = _dl.predict_emotion_from_bytes(raw)
         return {"emotion": label, "confidence": prob}
     except Exception as e:
+        print("[/stress/audio 오류]", e)
         raise HTTPException(status_code=400, detail=f"audio error: {e}")
 
 
-# 2-A) 통합 리포트(권장): FormData 한 번에 (음성 + 입력 + 메모)
-#     프론트: FormData로 'audio', 'sleepHours', 'activityLevel', 'caffeineCups', 'comment' 전송
-@router.post("/report", response_model=ReportOut)
-async def make_report_form(
-    audio: Optional[UploadFile] = File(None),
-    sleepHours: Optional[float] = Form(None),
-    activityLevel: Optional[float] = Form(None),
-    caffeineCups: Optional[float] = Form(None),
-    comment: Optional[str] = Form(""),
-):
-    # 1) 유효성
-    if sleepHours is None or activityLevel is None or caffeineCups is None:
-        raise HTTPException(
-            status_code=422,
-            detail="sleepHours, activityLevel, caffeineCups는 필수입니다.(FormData)",
-        )
+# ============================================================
+# 2) 통합 리포트(JSON + ML/DL/LLM) - 그래프 기반
+# ============================================================
 
-    # 2) ML 예측 (0~100)
-    try:
-        ml_input = {
-            "sleep_duration": float(sleepHours),
-            "physical_activity_level": float(activityLevel),
-            "caffeine_cups": float(caffeineCups),
-        }
-        # 프로젝트 구현에 맞게 predict_* 호출
-        stress_score = float(_ml.predict_as_score(ml_input))
-        ml_meta = {
-            "stress_score_0_100": stress_score,
-            "model": getattr(_ml, "model_name", "stress_rf_model.pkl"),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"ML predict error: {e}")
-
-    # 3) DL 감정 (옵션: 음성 있으면 분석, 없으면 unknown)
-    primary_emotion = "unknown"
-    try:
-        if audio is not None:
-            raw = await audio.read()
-            primary_emotion, _prob = _dl.predict_emotion_from_bytes(raw)
-    except Exception as e:
-        # DL 실패해도 리포트는 계속 진행
-        primary_emotion = "unknown"
-
-    # 4) LLM 코칭 생성
-    llm_err = None
-    try:
-        coaching = _llm.generate_coaching(
-            ml_score=stress_score,
-            emotion=primary_emotion,
-            user_note=(comment or ""),
-            ml_top_features=None,
-            user_info={},
-            context={},
-        )
-    except Exception as e1:
-        try:
-            payload = {
-                "user": {},
-                "context": {"note": comment or ""},
-                "ml_stress": {"stress_score_0_100": stress_score},
-                "dl_emotion": {"primary_emotion": primary_emotion},
-                "app": {"name": "StressCare AI", "locale": "ko-KR", "version": "0.1.0"},
-            }
-            coaching = _llm.generate_coaching_with_payload(payload)
-            llm_err = f"(first_call_error){e1}"
-        except Exception as e2:
-            coaching = (
-                f"(LLM 폴백) 현재 스트레스 점수는 {round(stress_score, 1)}점입니다. "
-                "3분 복식호흡과 10분 산책으로 긴장을 풀어보세요."
-            )
-            llm_err = f"{e1} | {e2}"
-
-    return ReportOut(
-        stressScore=stress_score,
-        primaryEmotion=primary_emotion,
-        coachingText=coaching,
-        meta={
-            "ml_used": True,
-            "llm_error": llm_err,
-            "note": comment,
-            "ml_meta": ml_meta,
-        },
-    )
-
-# 2-B) 통합 리포트(보조): JSON 바디로만(음성 사전 분석 or 미사용)
-#      프론트: application/json 로 ReportIn 바디 전송-
 @router.post("/report/json", response_model=ReportOut)
 def make_report_json(body: ReportIn):
+
     if body.sleepHours is None or body.activityLevel is None or body.caffeineCups is None:
-        raise HTTPException(
-            status_code=422,
-            detail="sleepHours, activityLevel, caffeineCups는 필수입니다.(JSON)",
-        )
+        raise HTTPException(422, "필수 입력값 누락 (sleepHours, activityLevel, caffeineCups)")
 
-    # ML
-    try:
-        ml_input = {
-            "sleep_duration": body.sleepHours,
-            "physical_activity_level": body.activityLevel,
-            "caffeine_cups": body.caffeineCups,
-        }
-        stress_score = float(_ml.predict_as_score(ml_input))
-        ml_meta = {
-            "stress_score_0_100": stress_score,
-            "model": getattr(_ml, "model_name", "stress_rf_model.pkl"),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"ML predict error: {e}")
-
-    # DL (프론트가 전달한 값 사용)
-    primary_emotion = body.primaryEmotion or "unknown"
-
-    # LLM
-    llm_err = None
-    try:
-        coaching = _llm.generate_coaching(
-            ml_score=stress_score,
-            emotion=primary_emotion,
-            user_note=(body.comment or ""),
-            ml_top_features=None,
-            user_info={},
-            context={},
-        )
-    except Exception as e1:
-        try:
-            payload = {
-                "user": {},
-                "context": {"note": body.comment or ""},
-                "ml_stress": {"stress_score_0_100": stress_score},
-                "dl_emotion": {"primary_emotion": primary_emotion},
-                "app": {"name": "StressCare AI", "locale": "ko-KR", "version": "0.1.0"},
-            }
-            coaching = _llm.generate_coaching_with_payload(payload)
-            llm_err = f"(first_call_error){e1}"
-        except Exception as e2:
-            coaching = (
-                f"(LLM 폴백) 현재 스트레스 점수는 {round(stress_score, 1)}점입니다. "
-                "3분 복식호흡과 10분 산책으로 긴장을 풀어보세요."
-            )
-            llm_err = f"{e1} | {e2}"
-
-    return ReportOut(
-        stressScore=stress_score,
-        primaryEmotion=primary_emotion,
-        coachingText=coaching,
-        meta={
-            "ml_used": True,
-            "llm_error": llm_err,
-            "note": body.comment,
-            "ml_meta": ml_meta,
-        },
+    # LangGraph v2 진단 그래프 사용
+    diag_state = DiagnosisState(
+        user_query=body.comment or "",
+        sleep_hours=body.sleepHours,
+        activity_level=body.activityLevel,
+        caffeine_cups=body.caffeineCups,
+        # age, gender 필요하면 나중에 추가
     )
 
-# 3) LLM 챗봇 (대화 컨텍스트 + 히스토리)
+    try:
+        diag = StressDiagnosisGraph.invoke(diag_state)
+
+        report = ReportOut(
+            stressScore=float(diag.stress_score or 0.0),
+            primaryEmotion=diag.emotion_state or body.primaryEmotion,
+            coachingText=diag.report or diag.diagnosis_summary or "",
+            meta={
+                "ml": getattr(diag, "ml_result", None),
+                "dl": getattr(diag, "dl_result", None),
+                "interview": getattr(diag, "interview_data", None),
+                "is_crisis": diag.is_crisis,
+                "crisis_message": diag.crisis_message,
+                "source": "StressDiagnosisGraph.v2",
+            },
+        )
+        return report
+
+    except Exception as e:
+        # LangGraph 전체 실패 시 예전 ML + LLM 방식으로 폴백
+        print("[/report/json StressDiagnosisGraph 오류, fallback 사용]", e)
+
+        try:
+            stress_score = float(
+                _ml.predict_as_score(
+                    {
+                        "sleep_duration": body.sleepHours,
+                        "physical_activity_level": body.activityLevel,
+                        "caffeine_cups": body.caffeineCups,
+                    }
+                )
+            )
+        except Exception as e2:
+            print("[/report/json ML fallback 오류]", e2)
+            stress_score = 0.0
+
+        try:
+            coaching = _llm.generate_coaching(
+                ml_score=stress_score,
+                emotion=body.primaryEmotion,
+                user_note=(body.comment or ""),
+            )
+        except Exception as e3:
+            print("[/report/json LLM fallback 오류]", e3)
+            coaching = (
+                f"(fallback) 현재 추정 스트레스 점수는 {stress_score:.1f}입니다. "
+                f"오늘은 3분 정도 깊은 복식호흡과 가벼운 스트레칭으로 몸을 풀어보는 걸 추천해요."
+            )
+
+        return ReportOut(
+            stressScore=stress_score,
+            primaryEmotion=body.primaryEmotion,
+            coachingText=coaching,
+            meta={"note": body.comment, "error": str(e), "source": "fallback-ml-llm"},
+        )
+
+
+# 2-1) Spring(FormData)용 /report/agent
+@router.post("/report/agent", response_model=ReportOut)
+def make_report_agent(
+    sleepHours: float = Form(...),
+    activityLevel: float = Form(...),
+    caffeineCups: float = Form(...),
+    primaryEmotion: str = Form("unknown"),
+    comment: str = Form(""),
+):
+    """
+    Spring에서 multipart/form-data로 호출하는 /stress/report/agent 를
+    내부적으로 JSON 버전(/report/json)의 로직에 연결하는 어댑터.
+    """
+    body = ReportIn(
+        sleepHours=sleepHours,
+        activityLevel=activityLevel,
+        caffeineCups=caffeineCups,
+        primaryEmotion=primaryEmotion,
+        comment=comment,
+    )
+    return make_report_json(body)
+
+
+# ============================================================
+# 3) 자유 LLM 챗봇
+# ============================================================
+
 @router.post("/chat", response_model=ChatOut)
 def free_chat(body: ChatIn):
-    """
-    프론트는 report 결과를 기반으로:
-    - ml: {"stress_score": 60.5} 등
-    - dl: {"primary_emotion": "..."}
-    - coaching: 리포트 전체 텍스트
-    - history: [{"role":"user"/"assistant","content":"..."}]
-    - question: 사용자의 후속 질문
-    """
-    try:
-        # 1) 컨텍스트를 '프리앰블' 메시지로 한 번 주입
-        ctx_json = {
-            "ml": body.ml or {},
-            "dl": body.dl or {},
-            "coaching": body.coaching or ""
-        }
-        preamble = {
+    # 간단 위기 감지 (질문 텍스트 기준)
+    if detect_crisis(body.question):
+        return ChatOut(reply=render_crisis_message())
+
+    # 컨텍스트(ML/DL/이전 코칭)를 한 번에 요약해서 넘김
+    ctx = {
+        "ml": body.ml,
+        "dl": body.dl,
+        "coaching": body.coaching,
+    }
+
+    messages: List[Dict[str, str]] = []
+
+    # 현재 상태 요약 프롬프트
+    messages.append(
+        {
             "role": "user",
             "content": (
-                "다음 JSON은 대화에 참고할 컨텍스트입니다. "
-                "분석 결과를 기억한 상태로 자연스럽게 대화해 주세요.\n"
-                f"{ctx_json}"
+                "다음 JSON은 지금 내 상태 요약이야. 이걸 참고해서 너무 무겁지 않은 톤으로 한국어로만 대화해줘.\n"
+                f"{ctx}"
             ),
         }
+    )
 
-        # 2) 기존 히스토리(있다면) 이어붙인 뒤, 마지막에 사용자의 질문
-        msgs: List[Dict[str, str]] = [preamble]
-        msgs.extend([{"role": t.role, "content": t.content} for t in (body.history or [])])
-        msgs.append({"role": "user", "content": body.question})
+    # 기존 대화 히스토리
+    for t in body.history:
+        messages.append({"role": t.role, "content": t.content})
 
-        reply = _llm.chat(messages=msgs)  # <- llm_service.chat(...) 사용
-        return ChatOut(reply=reply)
+    # 이번 질문
+    messages.append({"role": "user", "content": body.question})
+
+    try:
+        reply = _llm.chat(messages=messages)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"chat error: {e}")
+        print("[/stress/chat LLM 오류]", e)
+        reply = "지금 잠깐 대화 엔진에 문제가 생긴 것 같아. 잠시 후에 다시 시도해줄래?"
+
+    return ChatOut(reply=reply)
