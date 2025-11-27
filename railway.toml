@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+restart_policy_type = "on_failure"
+
+[nixpacks]
+  [nixpacks.environment]
+  PYTHON_VERSION = "3.11"
