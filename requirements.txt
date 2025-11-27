@@ -9,6 +9,7 @@ numpy
 pandas
 joblib
 scikit-learn
+xgboost
 
 sqlalchemy
 psycopg2-binary   # PostgreSQL 연결용
